@@ -1,0 +1,74 @@
+(ns media.core-test
+  "JVM unit tests for the pure media cores (.cljc runs on the JVM; ->clj/->js are
+  identity there, so we pass plain Clojure maps). Run: clojure -M:test"
+  (:require [clojure.test :refer [deftest is testing]]
+            [media.core :as core]
+            [media.taxonomy :as tax]
+            [media.i18n :as i18n]
+            [media.score :as score]
+            [media.link :as link]))
+
+(deftest taxonomy-coverage
+  (testing "all 8 genre desks + relations + kinds"
+    (is (= 8 (count tax/genres)))
+    (is (every? tax/genre? ["tech" "policy" "labor" "markets" "incident" "culture" "local" "science"]))
+    (is (not (tax/genre? "bogus")))
+    (is (= "tech" (tax/normalize-genre "BOGUS")))
+    (is (= "policy" (tax/normalize-genre "  Policy ")))
+    (is (tax/relation? "warns"))
+    (is (= "explains" (tax/normalize-relation "nope")))
+    (is (tax/kind? "cohort"))
+    (is (not (tax/kind? "person")))))
+
+(deftest i18n-100-plus
+  (testing "≥100 languages, robust normalization"
+    (is (>= (i18n/supported-lang-count) 100))
+    (is (= "ja" (i18n/normalize-lang "Japanese")))
+    (is (= "pt" (i18n/normalize-lang "pt-BR")))
+    (is (= "en" (i18n/normalize-lang "")))
+    (is (= "en" (i18n/normalize-lang nil)))
+    (is (nil? (i18n/normalize-lang "zz-nope")))
+    (is (= "Swahili" (i18n/lang-name "sw")))
+    (is (re-find #"Japanese" (i18n/lang-directive "ja")))
+    (is (re-find #"English" (i18n/lang-directive "en")))))
+
+(deftest tx-edn-shape
+  (testing "subject + link → [:db/add E A V] EDN"
+    (let [tx (core/subject->tx-edn {:id "subj-cohort-x" :kind "cohort" :label "L" :lang "ja" :createdAt "t"})]
+      (is (re-find #"\[:db/add \"subj-cohort-x\" :media.subject/kind \"cohort\"\]" tx))
+      (is (re-find #":media.subject/lang \"ja\"" tx)))
+    (let [tx (core/link->tx-edn {:id "lnk-1" :genre "tech" :subjectId "subj-1" :arbitrage 55 :createdAt "t"})]
+      (is (re-find #":media.link/genre \"tech\"" tx))
+      (is (re-find #":media.link/arbitrage 55" tx))
+      (is (re-find #":media.link/delivered false" tx)))))
+
+(deftest validation
+  (testing "kind + genre validated against the taxonomy"
+    (is (:valid (core/validate-subject {:kind "cohort" :label "x"})))
+    (is (not (:valid (core/validate-subject {:kind "bogus" :label "x"}))))
+    (is (not (:valid (core/validate-subject {:kind "cohort"}))))      ; missing label
+    (is (:valid (core/validate-link {:genre "policy" :subjectId "s"})))
+    (is (not (:valid (core/validate-link {:genre "nope" :subjectId "s"}))))))
+
+(deftest query-builders
+  (testing "vector-form Datalog"
+    (is (= "[:find (pull ?e [*]) :where [?e :media.link/id ?id] [?e :media.link/genre \"tech\"]]"
+           (core/q-list-links "tech")))
+    (is (= "[:find (pull ?e [*]) :where [?e :media.link/id ?id]]"
+           (core/q-list-links nil)))
+    (is (re-find #":media.link/subjectId \"s1\"" (core/q-links-for-subject "s1")))))
+
+(deftest scoring-and-linking
+  (testing "bridge score + candidate ranking are pure + bounded"
+    (let [r (score/score-bridge {:sourceText "poverty wage 申請 無料 inequality" :subjectText "poverty welfare applicants"})]
+      (is (<= 0 (:relevance r) 100))
+      (is (<= 0 (:arbitrage r) 100))
+      (is (map? (:bridgeScores r))))
+    (let [cands (link/candidate-subjects
+                 {:source {:title "poverty support guide" :topic "welfare"}
+                  :subjects [{:id "subj-cohort-poor" :kind "cohort" :label "low income welfare applicants" :topic "poverty"}
+                             {:id "subj-discipline-ml" :kind "discipline" :label "machine learning" :topic "AI"}]
+                  :min 1 :max 5})]
+      (is (sequential? cands))
+      ;; the poverty cohort should rank ahead of the ML discipline for this source
+      (is (= "subj-cohort-poor" (:subjectId (first cands)))))))

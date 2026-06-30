@@ -1,0 +1,37 @@
+;; media.gftd.ai edge-worker core build — pure A→B medium logic to an ES module.
+{:deps   {:aliases [:cljs]}
+ :builds {:worker
+          {:target     :esm
+           :output-dir "../js"
+           :modules    {:media
+                        {:exports {validateLink          media.core/validate-link
+                                   validateSubject       media.core/validate-subject
+                                   subjectToTxEdn        media.core/subject->tx-edn
+                                   linkToTxEdn           media.core/link->tx-edn
+                                   reconcileDeliveryTxEdn media.core/reconcile-delivery-tx-edn
+                                   deskWriterDid         media.core/desk-writer-did
+                                   linkToPostText        media.core/link->post-text
+                                   qListLinks            media.core/q-list-links
+                                   qByLinkId             media.core/q-by-link-id
+                                   qLinksForSubject      media.core/q-links-for-subject
+                                   qListSubjects         media.core/q-list-subjects
+                                   shapeRows             media.core/shape-rows
+                                   candidateSubjects     media.link/candidate-subjects
+                                   scoreBridge           media.score/score-bridge
+                                   normalizeLang         media.i18n/js-normalize-lang
+                                   langDirective         media.i18n/js-lang-directive
+                                   langName              media.i18n/js-lang-name
+                                   supportedLangs        media.i18n/supported-langs
+                                   supportedLangCount    media.i18n/js-supported-lang-count
+                                   supportedGenres       media.taxonomy/supported-genres
+                                   supportedRelations    media.taxonomy/supported-relations
+                                   supportedKinds        media.taxonomy/supported-kinds
+                                   normalizeGenre        media.taxonomy/js-normalize-genre
+                                   normalizeRelation     media.taxonomy/js-normalize-relation
+                                   genreSupported        media.taxonomy/js-genre?
+                                   supportedDesks        media.desks/supported-desks
+                                   deskProfile           media.desks/js-profile
+                                   inferRelation         media.desks/js-infer-relation
+                                   seedSubjects          media.desks/js-seed-subjects}}}
+           :compiler-options {:output-feature-set :es2020
+                              :infer-externs :auto}}}}
