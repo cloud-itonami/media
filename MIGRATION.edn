@@ -1,0 +1,21 @@
+[{:db/id -1
+  :migration/id :media-standalone-runtime-20260719
+  :migration/status :runtime-source-migrated
+  :migration/authoritative? true
+  :migration/source-repository "gftdcojp/ai-gftd-apps-gftdcojp"
+  :migration/source-revision "0c4f388e74138a098aa8608012cc4ebfc3f5b2a6"
+  :migration/source-path "60-apps/ai-gftd-project-media"
+  :migration/destination-repository "gftdcojp/ai-gftd-media"
+  :migration/preserved
+  ["TypeScript async I/O and host-SDK worker shell"
+   "ClojureScript A-to-B media domain logic"
+   "Datomic transaction and query generation"
+   "vendor-owned media runtime configuration"]
+  :migration/common-boundary
+  "Media does not consume 60-apps/_shared/edge-core. That library is shared only by mangaka, shinshi, and yukkuri and must be extracted independently before those roots drain."
+  :migration/build-note
+  "The TypeScript shell resolves @gftd/magatama-host-sdk through the west/superproject workspace. The generated js/media.js is produced by the guarded ClojureScript release and is not committed as a second source of truth."
+  :migration/verification
+  ["clojure -M:test in clj"
+   "EDN parse"
+   "source parity for migrated runtime files"]}]
