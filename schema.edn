@@ -2,4 +2,17 @@
 ;; :db/ident 属性定義のリスト。Datomic 固有キー(:db.install/_attribute 等)は使わない。
 ;; 手編集禁止 — 再生成すると上書きされる。
 
-[#:db{:ident :readme/name, :valueType :db.type/string, :cardinality :db.cardinality/one} #:db{:ident :readme/note, :valueType :db.type/string, :cardinality :db.cardinality/one} #:db{:ident :readme/source, :valueType :db.type/string, :cardinality :db.cardinality/one}]
+[#:db{:ident :migration/authoritative?, :valueType :db.type/boolean, :cardinality :db.cardinality/one}
+ #:db{:ident :migration/build-note, :valueType :db.type/string, :cardinality :db.cardinality/one}
+ #:db{:ident :migration/common-boundary, :valueType :db.type/string, :cardinality :db.cardinality/one}
+ #:db{:ident :migration/destination-repository, :valueType :db.type/string, :cardinality :db.cardinality/one}
+ #:db{:ident :migration/id, :valueType :db.type/keyword, :cardinality :db.cardinality/one}
+ #:db{:ident :migration/preserved, :valueType :db.type/string, :cardinality :db.cardinality/many}
+ #:db{:ident :migration/source-path, :valueType :db.type/string, :cardinality :db.cardinality/one}
+ #:db{:ident :migration/source-repository, :valueType :db.type/string, :cardinality :db.cardinality/one}
+ #:db{:ident :migration/source-revision, :valueType :db.type/string, :cardinality :db.cardinality/one}
+ #:db{:ident :migration/status, :valueType :db.type/keyword, :cardinality :db.cardinality/one}
+ #:db{:ident :migration/verification, :valueType :db.type/string, :cardinality :db.cardinality/many}
+ #:db{:ident :readme/name, :valueType :db.type/string, :cardinality :db.cardinality/one}
+ #:db{:ident :readme/note, :valueType :db.type/string, :cardinality :db.cardinality/one}
+ #:db{:ident :readme/source, :valueType :db.type/string, :cardinality :db.cardinality/one}]
