@@ -3,13 +3,16 @@
   // 食い違っている状態を解消する(オーナー指示)。custom_domain の形は
   // cloud-itonami-app の hooks/mcp.itonami.cloud に揃えた。
   "name": "itonami-media-link",
-  // ⚠ **この worker は現在デプロイできない。** `main` が指す src/app.cljc は
-  // 存在せず(実体は src/app.ts と clj/src/media/*.cljc)、そのため
-  // media.gftd.ai は 522(origin へ到達不能)を返していた —— 502 でも 404 でもなく
-  // 「Cloudflare は居るが後ろに誰も居ない」状態。route だけ itonami.cloud に
-  // 付け替えても直らないので、**entrypoint を決める作業は別途必要**。
-  // ここでは配信先の意図だけを記録し、blind deploy はしない。
-  "main": "src/app.cljc",
+  // entrypoint は **TS シェル**。`src/app.ts` が `export default {}` を持ち、
+  // shadow-cljs が出す `js/media.js`(純ロジック)を import する構成。
+  // 2026-08-09 まで `src/app.cljc`(存在しないファイル)を指しており、それが
+  // media.gftd.ai の 522 の原因だった。
+  //
+  // ⚠ **依存は `npm install --install-links` で入れること**（`npm run install:deps`）。
+  // 既定の symlink install だと `@gftd/magatama-host-sdk` の *中* から出る
+  // `@etzhayyim/xrpc/*` の解決がこの repo の node_modules に届かず、bundle が落ちる。
+  // --install-links は実体コピーで入れるので transitive が普通に解決する。
+  "main": "src/app.ts",
   "compatibility_date": "2025-03-17",
   "compatibility_flags": ["nodejs_compat"],
   "routes": [
@@ -35,7 +38,7 @@
     "MEDIA_POD_URL": "https://media-actor.gftd.ai"
   },
   "build": {
-    "command": "cd clj && npx shadow-cljs release worker"
+    "command": "cd clj && clojure -M:cljs -m shadow.cljs.devtools.cli release worker"
   },
   // Hourly automatic analysis of primary sources (A) — the scheduled() handler
   // scans recent news sources and enqueues one job per source; the queue

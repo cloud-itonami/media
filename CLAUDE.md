@@ -8,14 +8,36 @@
 >
 > | 面 | 中身 | 配信 |
 > |---|---|---|
-> | **A→B link medium** | 下記のとおり。news = A、media = A→B のエッジ | `media.itonami.cloud`（⚠ 現在デプロイ不可、下記） |
+> | **A→B link medium** | 下記のとおり。news = A、media = A→B のエッジ | `media.itonami.cloud`（build は通る。deploy は未実施 —— 下記の前提条件が未達） |
 > | **kouryaku 攻略データ** | ゲームのキャラクター/ステージ/アイテムと出現関係の EDN コーパス + 公開面。`kouryaku/README.md` が正本 | `kouryaku.itonami.cloud` |
 >
-> ⚠ **link medium の worker は現在デプロイできない。** `wrangler.jsonc` の
-> `main` が指す `src/app.cljc` が存在しない（実体は `src/app.ts` と
-> `clj/src/media/*.cljc`）。これが `media.gftd.ai` が 522 を返していた原因で、
-> route を itonami.cloud に付け替えても直らない —— entrypoint を決める作業が別途要る。
-> kouryaku 面はこれと独立に動く（静的 assets のみ）。
+> **2026-08-09: link medium の build は通るようになった。** `main` が存在しない
+> `src/app.cljc` を指していたのを `src/app.ts`（`export default {}` を持つ TS シェル）に
+> 直し、依存の `workspace:*`（monorepo 抽出の残骸）を west sibling の `file:` に
+> 置き換えた。`wrangler deploy --dry-run` が 3519 KiB / gzip 507 KiB で通り、
+> 全 binding が解決する。
+>
+> ⚠ **ただし deploy はしていない。ランタイム前提が 3 つとも未達**（実測 2026-08-09）:
+>
+> | 前提 | 状態 |
+> |---|---|
+> | Queue `media-analysis` | **存在しない**（アカウントにあるのは `murakumo-kaizen` のみ） |
+> | Secret `KOTOBA_BEARER` | **未設定**（worker 自体が未作成） |
+> | `MEDIA_POD_URL` = `media-actor.gftd.ai` | **応答なし** |
+>
+> この状態で deploy すると hourly cron が認証情報なしで共有 datom 面
+> （`kotobase.net` / `media-link-v1`）に書きに行く。**build が通ることと動くことは
+> 別**なので、前提を満たせる人が deploy する:
+>
+> ```bash
+> npx wrangler queues create media-analysis
+> npx wrangler queues create media-analysis-dlq
+> npm run install:deps          # --install-links 必須
+> npx wrangler deploy
+> npx wrangler secret put KOTOBA_BEARER
+> ```
+>
+> kouryaku 面はこれと独立に動く（静的 assets のみ、既に稼働中）。
 
 ---
 
@@ -84,7 +106,13 @@ consent capability (ADR-2606011400).
 ## Build & deploy
 
 ```bash
-cd clj && npx shadow-cljs release worker   # → ../js/media.js
-cd .. && wrangler secret put KOTOBA_BEARER # media authn JWT
-gftd deploy --no-svelte
+npm run install:deps                       # npm install --install-links（必須）
+npm run cljs:release                       # → js/media.js
+npx wrangler deploy --dry-run              # bundle 検証
+npx wrangler deploy                        # 上記の前提 3 件を満たしてから
+npx wrangler secret put KOTOBA_BEARER      # media authn JWT
 ```
+
+⚠ `npx shadow-cljs` は動かない（`npm ERR! cb.apply is not a function`）。
+shadow-cljs は clojure CLI 経由で起動する —— `npm run cljs:release` と
+`wrangler.jsonc` の `build.command` は両方その形に直してある。
