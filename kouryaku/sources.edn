@@ -1,0 +1,151 @@
+;; kouryaku/sources.edn — 収集元の**手書きの唯一の面**。
+;;
+;; ここに書くのは source の中身から導出できないものだけ:
+;;   - その source を使ってよいか（robots / bot 検出 / AI agent 拒否の実測）
+;;   - 取れたデータを再配布してよいか（license）
+;;   - 公開面に出してよいか（consent / publish?）
+;;   - 何を掃くか（targets）
+;;
+;; **レコード本体・索引・統計は生成物**（collect.cljs / query.cljs）。手で書かない。
+;;
+;; ## なぜ source がこの 2 つだけなのか（実測 2026-08-05）
+;;
+;; 攻略情報が最も濃いのは game wiki だが、主要どころは軒並み自動アクセスを拒否
+;; していた。**迂回しない**（CLAUDE.md 安全床④ / product-corpus と同じ判断）:
+;;
+;; | 候補 | 実測結果 | 判定 |
+;; |---|---|---|
+;; | `zelda.fandom.com` | robots.txt 自体が Cloudflare managed challenge の裏（JS challenge ページが返る） | **不可**。challenge を解くのは bot 検出回避 |
+;; | `terraria.wiki.gg` | robots.txt が `ClaudeBot` / `GPTBot` / `CCBot` / `Google-Extended` 等を名指しで `Disallow: /` | **不可**。AI agent への明示的拒否 |
+;; | `minecraft.wiki` | `Disallow: /*api.php`（全 UA）+ 「### AI bots ###」節で `ClaudeBot` を `Disallow` | **不可** |
+;; | `stardewvalley.wiki.gg` | api.php が HTTP 401 | 不可 |
+;; | `www.wikidata.org` | `/w/` `/api/` は Disallow だが **`/wiki/` は許可** → `Special:EntityData` が使える | **可** |
+;; | `query.wikidata.org` | `Disallow: /sparql`（下記注記） | **限定可**（discovery のみ） |
+;; | `pokeapi.co` | robots.txt は Cloudflare content-signals の前文のみで **directive も signal も無し** = 制限の表明なし。公開開発者 API | **可**（fair use を守る） |
+;;
+;; ⚠ **`query.wikidata.org/robots.txt` の `Disallow: /sparql` について正直に書く。**
+;; これは blanket rule（AI agent を名指ししていない。生成結果ページの索引化を止める
+;; ためのもの）で、WDQS 自体は Wikimedia が programmatic query 用に提供している
+;; endpoint である。とはいえ robots に Disallow と書いてあるのは事実なので、
+;; **この経路は「一覧の発見」だけに使い、件数の多い本体取得は robots-clean な
+;; `Special:EntityData`（`/wiki/` 配下）に回す**設計にしてある。UA 偽装はしない
+;; （下記 :user-agent は連絡先入りの正直な名乗り）。オーナーが不可と判断するなら
+;; `:wikidata` の `:discovery/enabled?` を false にすれば SPARQL は一切飛ばない。
+
+{:registry/id "media/kouryaku-sources/v1"
+ :registry/adr "adr-2608059100-media-gamers-kouryaku-edn-datalad-plane"
+
+ ;; 全 source 共通。UA は名乗りと連絡先を必ず含める（Wikimedia の UA policy、
+ ;; PokéAPI の fair use はどちらもこれを要求する）。
+ :http
+ {:user-agent "media-kouryaku/0.1 (+https://github.com/cloud-itonami/media; root@junkawasaki.com)"
+  :timeout-sec 60
+  :retries 3}
+
+ ;; ---------------------------------------------------------------------------
+ ;; source。`:publish?` が公開面（publish.cljs）への出口ゲート。
+ ;; **license が再配布を許さない source は収集はしても公開しない。**
+ :sources
+ [{:source/id :wikidata
+   :source/name "Wikidata"
+   :source/license :cc0-1.0
+   :source/license-url "https://creativecommons.org/publicdomain/zero/1.0/"
+   :source/attribution "Wikidata contributors, CC0 1.0"
+   ;; CC0 なので再配布・改変・商用いずれも自由。
+   :source/consent :public
+   :source/publish? true
+   :source/rate-limit-ms 1200
+   ;; 一覧の発見。上の注記のとおり robots に blanket Disallow があるので、
+   ;; ここを false にすると seed の QID 展開だけが止まる（hydration は動く）。
+   :discovery/enabled? true
+   :discovery/endpoint "https://query.wikidata.org/sparql"
+   ;; 本体取得。`/wiki/` 配下なので robots-clean。lastrevid が取れるため
+   ;; **第三者が同じ revision を再取得して同一バイトを検証できる**。
+   :hydrate/endpoint "https://www.wikidata.org/wiki/Special:EntityData/"}
+
+  {:source/id :pokeapi
+   :source/name "PokéAPI"
+   :source/license :pokeapi-fair-use
+   :source/license-url "https://pokeapi.co/about"
+   :source/attribution "Data via PokéAPI (pokeapi.co). Pokémon and Pokémon character names are trademarks of Nintendo / Creatures Inc. / GAME FREAK inc."
+   ;; ⚠ **CC0 ではない。** API 自体は無償公開だが、原データは権利者のもの。
+   ;; 公開面には「出典表示 + 原典リンク」を必ず付ける（publish.cljs が強制）。
+   ;; 全量ミラーの再配布を主張しない。
+   :source/consent :public-with-attribution
+   :source/publish? true
+   ;; fair use の要求は「ローカルにキャッシュして叩き過ぎない」。
+   :source/rate-limit-ms 350
+   :hydrate/endpoint "https://pokeapi.co/api/v2/"}]
+
+ ;; ---------------------------------------------------------------------------
+ ;; targets。**1 行足すだけで掃き先が増える**形にしてある。
+ ;;
+ ;; 収穫量は実測してから広げること。0 件には 2 種類ある（product-corpus と同じ）:
+ ;;   - こちらが読めていない（バグ）
+ ;;   - source がそのデータを持っていない（事実）
+ ;; 前者と決めつけず、必ず生の応答を見て切り分ける。
+ :targets
+ [;; --- PokéAPI: 1 タイトル系列を深く掘る（キャラクター / アイテム / ステージ） ---
+  ;; 実測 2026-08-05 の母数: pokemon 1302 / item 2180 / location-area 1533。
+  ;; encounter（どのステージにどのキャラクターが出るか）が本物の攻略情報にあたる。
+  {:target/id :pokeapi-character
+   :target/source :pokeapi
+   :target/kind :character
+   :target/resource "pokemon"
+   :target/game "pokeapi:franchise/pokemon"}
+  {:target/id :pokeapi-item
+   :target/source :pokeapi
+   :target/kind :item
+   :target/resource "item"
+   :target/game "pokeapi:franchise/pokemon"}
+  {:target/id :pokeapi-stage
+   :target/source :pokeapi
+   :target/kind :stage
+   :target/resource "location-area"
+   :target/game "pokeapi:franchise/pokemon"}
+
+  ;; --- Wikidata: タイトル横断のカタログ + キャラクター ---
+  ;; ⚠ 実測 2026-08-05: Wikidata の **per-title の深さは浅い**。GTA V / BotW /
+  ;; ポケモン等 4 作品に紐づく `P1441`(present in work) 実体を数えたところ、
+  ;; コンピュータゲームキャラクター 20 / 架空のラジオ局 20 / 架空の人 19 …と
+  ;; 100 件前後しか無く、**アイテムとステージはほぼ存在しない**。
+  ;; したがって Wikidata は「作品カタログと著名キャラクター」担当であって、
+  ;; 攻略の深さは PokéAPI 側が持つ。この分担を数字ごと記録しておく
+  ;; （後から「なぜ Wikidata だけで済ませなかったのか」を再調査させないため）。
+  {:target/id :wikidata-game
+   :target/source :wikidata
+   :target/kind :game
+   ;; sitelink 数で著名度順に取る。母数 = video game (Q7889) とその下位クラス。
+   ;; ⚠ **DISTINCT は必須。** `P31/P279*` は同じ entity に複数の経路で当たるので、
+   ;; 無いと同一 QID が重複行で返り、corpus に同じ id のレコードが 2 本入る
+   ;; （実測 2026-08-05: wd:Q71910 が重複し `query.cljs verify` が検出した）。
+   :target/discovery
+   "SELECT DISTINCT ?e ?sitelinks WHERE { ?e wdt:P31/wdt:P279* wd:Q7889 ; wikibase:sitelinks ?sitelinks . FILTER(?sitelinks > 25) } ORDER BY DESC(?sitelinks) LIMIT %LIMIT%"}
+  {:target/id :wikidata-character
+   :target/source :wikidata
+   :target/kind :character
+   ;; 実測 2026-08-05: この形の母数は 37,449 件。
+   :target/discovery
+   "SELECT DISTINCT ?e ?game WHERE { ?e wdt:P1441 ?game . ?game wdt:P31/wdt:P279* wd:Q7889 . ?e wdt:P31/wdt:P279* wd:Q95074 . } LIMIT %LIMIT%"}]
+
+ ;; ---------------------------------------------------------------------------
+ ;; bytes plane。**生の応答（JSON）は git に入れない**（ADR-2608039700: raw corpus は
+ ;; annex）。canonical な EDN レコードは小さいので通常の git blob のまま置く
+ ;; ——「EDN だから annex」ではない、というのが同 ADR の明文。
+ ;;
+ ;; ここは宛先の**宣言**であって、実際に custody があるかはこの面が申告しない。
+ ;; 証明は `scripts/annex-custody-verify.cljs` だけが持つ。
+ :bytes-plane
+ {:dataset/id "cloud-itonami/media-corpus"
+  :dataset/path "orgs/cloud-itonami/media-corpus"
+  :dataset/subdir "raw"
+  :annex/backend "SHA256"
+  :annex/special-remote "b2"
+  :build/out-dir ".raw"}
+
+ ;; ---------------------------------------------------------------------------
+ ;; query plane への露出。
+ :query
+ {:source/dataset "media-kouryaku"
+  :join-keys [{:key :kouryaku/game :joins ":kouryaku/id (kind :game)"}
+              {:key :kouryaku/id   :joins ":rel/target"}]}}

@@ -1,0 +1,309 @@
+#!/usr/bin/env nbb
+;; publish.cljs — corpus/*.edn → 静的 HTML（デジタル庁デザインシステム）。
+;;
+;; ## 公開の出口ゲート
+;;
+;; **`sources.edn` の `:source/publish?` が false の source は 1 件も出さない。**
+;; 収集できることと再配布してよいことは別で、その判断を各ページの生成コードに
+;; 散らすと必ずどこかで漏れる。ここ 1 箇所で弾き、出した source の attribution を
+;; 全ページのフッタに必ず刷る（`:public-with-attribution` の履行）。
+;;
+;; ## UI
+;;
+;; skill `kotoba-uiux`（オーナー判断 2026-08-05）に従い base は jp-go-dds。
+;; - app が触ってよいのは `jp-go-dds.core` / `.page` / `.tokens` だけ
+;; - 生 hex・px の font-size を書かない（`--hig-*` token 経由）
+;; - layout は `dds-ext-*`（`.layout` 等を手書きしない）
+;; - CSS は EDN で書く（`css.core`）。ベクタ列にするのは順序＝カスケードのため
+;;
+;; ## 実行
+;;   nbb --classpath ".:<html>/src:<css>/src:<jp-go-dds>/src" kouryaku/publish.cljs
+;; パスは KOURYAKU_CLASSPATH_ROOT / JP_GO_DDS_CSS で上書きできる。
+
+(ns kouryaku.publish
+  (:require [kouryaku.util :as u]
+            [clojure.string :as str]
+            [css.core :as css]
+            [jp-go-dds.core :as dds]
+            [jp-go-dds.page :as page]
+            [jp-go-dds.tokens :as tokens]))
+
+(def corpus-dir "kouryaku/corpus")
+(def out-dir (or (some-> js/process.env.KOURYAKU_OUT not-empty) "site"))
+(def registry (u/read-edn "kouryaku/sources.edn"))
+(def sources (into {} (map (juxt :source/id identity) (:sources registry))))
+
+(def dds-css
+  (u/slurp (or (some-> js/process.env.JP_GO_DDS_CSS not-empty)
+               "../../kotoba-lang/jp-go-digital-design-system/resources/jp_go_dds/dds.css")))
+
+;; ---------------------------------------------------------------------------
+;; 公開ゲート
+
+(def all-records (u/read-corpus corpus-dir))
+
+(def records
+  (let [publishable (set (keep #(when (:source/publish? %) (:source/id %)) (:sources registry)))
+        keep? (comp publishable :src/source)]
+    (when-let [dropped (seq (remove keep? all-records))]
+      (println (str "  [gate] 非公開 source のため " (count dropped) " 件を除外: "
+                    (str/join "," (map name (distinct (map :src/source dropped)))))))
+    (vec (filter keep? all-records))))
+
+(def used-sources
+  (->> records (map :src/source) distinct (keep sources) vec))
+
+(defn- by-kind [k] (filter #(= k (:kouryaku/kind %)) records))
+(def index-by-id (into {} (map (juxt :kouryaku/id identity) records)))
+
+;; ---------------------------------------------------------------------------
+;; 表示ヘルパ
+;;
+;; **日本語名が無いことを英語名で隠さない。** PokéAPI の location 系には ja が
+;; 一件も無い（実測 2026-08-05）ので、そこは英語のまま出しつつ「日本語名なし」と
+;; 明示する。黙って英語を出すと、日本語対応済みに見えてしまう。
+
+(defn- ja-name [m] (:ja (:kouryaku/name m)))
+(defn- en-name [m] (:en (:kouryaku/name m)))
+(defn- disp [m] (or (ja-name m) (en-name m) (:kouryaku/slug m) "?"))
+
+(defn- name-cell [m]
+  (if (ja-name m)
+    [:span (ja-name m) (when (en-name m) [:span {:class "k-sub"} " " (en-name m)])]
+    [:span (or (en-name m) (:kouryaku/slug m))
+     [:span {:class "k-sub"} " 日本語名なし"]]))
+
+(defn- slug-file [m]
+  (str (name (:kouryaku/kind m)) "/" (str/replace (:kouryaku/slug m) #"[^A-Za-z0-9_-]" "_") ".html"))
+
+(defn- desc-of [m] (or (:ja (:kouryaku/desc m)) (:en (:kouryaku/desc m))))
+
+;; ---------------------------------------------------------------------------
+;; app CSS — EDN で書く。色・字送りは token 参照のみ（生 hex / px font-size 禁止）
+
+(def app-css
+  (css/css
+   {:rules
+    [[".k-lead" {:color "var(--hig-label-secondary)" :line-height 1.8 :margin ".5rem 0 0"}]
+     [".k-sub" {:color "var(--hig-label-tertiary)" :font-size "var(--hig-text-footnote-size)"}]
+     [".k-meta" {:color "var(--hig-label-secondary)"
+                 :font-size "var(--hig-text-footnote-size)"
+                 :margin ".25rem 0 0"}]
+     [".k-card-title" {:margin "0 0 .25rem"}]
+     [".dds-ext-card p" {:margin 0 :line-height 1.7}]
+     ;; 数値の列は等幅で桁を揃える（レベル帯・スコアの比較が主用途のため）
+     [".k-num" {:font-variant-numeric "tabular-nums" :text-align "right" :white-space "nowrap"}]
+     [".k-footer" {:margin-top "var(--hig-spacing-8)" :padding-block "var(--hig-spacing-4)"
+                   :color "var(--hig-label-secondary)" :line-height 1.8}]
+     [".k-footer a" {:color "inherit"}]
+     ;; 表は幅が足りないとき自身の中でだけ横スクロールさせる（body を横に
+     ;; 溢れさせない）
+     [".dads-table" {:overflow-x "auto"}]]}))
+
+;; ---------------------------------------------------------------------------
+;; 共通レイアウト
+
+(defn- crumb
+  "depth 0 は index 自身なので出さない（自分自身へのリンクになる）。"
+  [depth]
+  (when (pos? depth)
+    (let [up (apply str (repeat depth "../"))]
+      [:p {:class "k-meta"} [:a {:href (str up "index.html")} "← 攻略データ index"]])))
+
+(defn- footer []
+  [:footer {:class "k-footer"}
+   (dds/divider)
+   [:p "このページのデータは以下を出典とする自動生成物です。数値は出典から機械的に写したもので、編集していません。"]
+   [:ul
+    (for [s used-sources]
+      [:li [:strong (:source/name s)] " — " (:source/attribution s)
+       " (" [:a {:href (:source/license-url s)} (name (:source/license s))] ")"])]
+   [:p {:class "k-sub"}
+    "生成: kouryaku/publish.cljs · 収集: kouryaku/collect.cljs · 問い合わせ: kouryaku/query.cljs"]])
+
+(defn- render [{:keys [title description depth]} & body]
+  (apply page/->page
+         {:title (str title " — itonami 攻略データ")
+          :description description
+          :lang "ja"
+          :css dds-css
+          :app-css (str tokens/skin-css app-css)}
+         (concat [(dds/container
+                   (crumb depth)
+                   (dds/heading 1 title {:size "45"})
+                   (when description [:p {:class "k-lead"} description]))]
+                 body
+                 [(dds/container (footer))])))
+
+(defn- write! [rel html]
+  (u/spit (str out-dir "/" rel) html)
+  rel)
+
+;; ---------------------------------------------------------------------------
+;; ページ
+
+(defn- encounter-rows
+  "ステージ record → 表の行。version ごとに 1 行。"
+  [stage]
+  (for [r (sort-by (comp - :encounter-score :rel/props) (:kouryaku/rel stage))
+        :let [p (:rel/props r)
+              t (get index-by-id (:rel/target r))]]
+    [(if t [:a {:href (str "../" (slug-file t))} (disp t)]
+         ;; corpus の収集範囲外。リンクを張らずに「範囲外」と明示する
+         [:span (last (str/split (:rel/target r) #"/")) [:span {:class "k-sub"} " 収集範囲外"]])
+     (:version p)
+     [:span {:class "k-num"} (str (:min-level p) "–" (:max-level p))]
+     [:span {:class "k-num"} (:encounter-score p)]
+     (str/join ", " (:methods p))]))
+
+(defn- stage-page [m]
+  (let [rels (:kouryaku/rel m)]
+    (render
+     {:title (disp m) :depth 1
+      :description (str (disp m) " の出現キャラクター一覧（バージョン別・レベル帯付き）")}
+     (dds/container
+      (dds/section
+       {:title "このステージに出るキャラクター"}
+       (if (seq rels)
+         (list
+          [:p {:class "k-meta"}
+           "スコアは PokéAPI の max_chance（エンカウント方式ごとの確率の合計）。"
+           [:strong "100 を超えることがある"] "ので百分率として読まないこと。"]
+          (dds/table {:caption (str (disp m) " の出現データ " (count rels) " 件")
+                      :headers ["キャラクター" "バージョン" "Lv" "スコア" "方式"]
+                      :rows (encounter-rows m)}))
+         [:p "このステージの出現データは収集されていません。"]))
+      (dds/section
+       {:title "メタ"}
+       (dds/table
+        {:headers ["項目" "値"]
+         :rows [["ID" (:kouryaku/id m)]
+                ["地域" (or (:region (:kouryaku/props m)) "—")]
+                ["親ロケーション" (or (:location (:kouryaku/props m)) "—")]
+                ["日本語名" (if (ja-name m) (ja-name m) "出典が持っていない")]
+                ["出典" [:a {:href (:src/url m)} (:src/url m)]]]}))))))
+
+(defn- character-page [m]
+  (let [p (:kouryaku/props m)
+        ;; 逆引き: このキャラがどのステージに出るか
+        appears (for [s (by-kind :stage)
+                      r (:kouryaku/rel s)
+                      :when (= (:rel/target r) (:kouryaku/id m))]
+                  [[:a {:href (str "../" (slug-file s))} (disp s)]
+                   (:version (:rel/props r))
+                   [:span {:class "k-num"} (str (:min-level (:rel/props r)) "–" (:max-level (:rel/props r)))]
+                   [:span {:class "k-num"} (:encounter-score (:rel/props r))]])]
+    (render
+     {:title (disp m) :depth 1 :description (or (desc-of m) (str (disp m) " のデータ"))}
+     (dds/container
+      (when-let [d (desc-of m)] (dds/section {:title "説明"} [:p d]))
+      (dds/section
+       {:title "ステータス"}
+       (dds/table
+        {:headers ["項目" "値"]
+         :rows (cond-> [["タイプ" (str/join " / " (:types p))]
+                        ["とくせい" (str/join " / " (:abilities p))]
+                        ["高さ / 重さ" (str (/ (:height-dm p) 10.0) " m / " (/ (:weight-hg p) 10.0) " kg")]
+                        ["世代" (or (:generation p) "—")]
+                        ["捕獲率" (or (:capture-rate p) "—")]]
+                 (:stats p) (into (for [[k v] (:stats p)] [k [:span {:class "k-num"} v]])))}))
+      (dds/section
+       {:title "出現ステージ"}
+       (if (seq appears)
+         (dds/table {:headers ["ステージ" "バージョン" "Lv" "スコア"] :rows appears})
+         [:p "収集済みステージの範囲では出現データがありません。"]))
+      (dds/section
+       {:title "メタ"}
+       (dds/table {:headers ["項目" "値"]
+                   :rows [["ID" (:kouryaku/id m)]
+                          ["出典" [:a {:href (:src/url m)} (:src/url m)]]]}))))))
+
+(defn- item-page [m]
+  (let [p (:kouryaku/props m)]
+    (render
+     {:title (disp m) :depth 1 :description (or (desc-of m) (str (disp m) " のデータ"))}
+     (dds/container
+      (when-let [d (desc-of m)] (dds/section {:title "説明"} [:p d]))
+      (dds/section
+       {:title "データ"}
+       (dds/table
+        {:headers ["項目" "値"]
+         :rows [["分類" (or (:category p) "—")]
+                ["価格" (if (:cost p) [:span {:class "k-num"} (:cost p)] "—")]
+                ["属性" (str/join ", " (:attributes p))]
+                ["持っているキャラクター" (if (seq (:held-by p)) (str/join ", " (:held-by p)) "—")]]}))
+      (dds/section
+       {:title "メタ"}
+       (dds/table {:headers ["項目" "値"]
+                   :rows [["ID" (:kouryaku/id m)]
+                          ["出典" [:a {:href (:src/url m)} (:src/url m)]]]}))))))
+
+(defn- game-card [m]
+  (let [p (:kouryaku/props m)
+        labels (fn [k] (->> (get p k) (keep :label) (str/join " / ")))]
+    (dds/card
+     [:h3 {:class "dads-heading k-card-title" :data-size "20"} (disp m)]
+     (when-let [d (desc-of m)] [:p d])
+     [:p {:class "k-meta"}
+      (when-not (str/blank? (labels :developer)) (str "開発 " (labels :developer) " · "))
+      (when-not (str/blank? (labels :genre)) (str "ジャンル " (labels :genre)))]
+     [:p {:class "k-meta"} "出典 " [:a {:href (:src/url m)} (str "Wikidata rev." (:src/revision m))]])))
+
+(defn- kind-index [kind title description page-fn]
+  (let [ms (sort-by disp (by-kind kind))]
+    (doseq [m ms] (write! (slug-file m) (page-fn m)))
+    (write! (str (name kind) "/index.html")
+            (render
+             {:title title :depth 1 :description description}
+             (dds/container
+              (dds/section
+               {:title (str (count ms) " 件")}
+               (dds/table
+                {:headers ["名前" "ID"]
+                 :rows (for [m ms]
+                         [[:a {:href (str "../" (slug-file m))} (name-cell m)]
+                          [:span {:class "k-sub"} (:kouryaku/id m)]])})))))
+    (count ms)))
+
+(defn- index-page [counts]
+  (render
+   {:title "ゲーム攻略データ" :depth 0
+    :description "キャラクター・ステージ・アイテムと、その出現関係を出典付きで公開する機械可読データセット。"}
+   (dds/container
+    (dds/section
+     {:title "収録データ"}
+     (dds/grid
+      {:min "16rem"}
+      (for [[k label href] [[:character "キャラクター" "character/index.html"]
+                            [:stage "ステージ" "stage/index.html"]
+                            [:item "アイテム" "item/index.html"]]]
+        (dds/card
+         [:h3 {:class "dads-heading k-card-title" :data-size "20"} label]
+         [:p [:span {:class "k-num"} (get counts k 0)] " 件"]
+         [:p (dds/button "一覧を見る" {:href href :type :outline :size "sm"})]))))
+    (dds/section
+     {:title "作品カタログ"}
+     [:p {:class "k-meta"}
+      "Wikidata (CC0) 由来。" [:strong "per-title の攻略深度は Wikidata には無い"]
+      "（実測: 1 作品あたり数十件で、アイテム・ステージはほぼ存在しない）ので、"
+      "ここはカタログとして持ち、攻略の本体は PokéAPI 側にある。"]
+     (dds/grid {:min "18rem"} (map game-card (sort-by disp (by-kind :game)))))
+    (dds/section
+     {:title "このデータの読み方"}
+     [:ul
+      [:li "全レコードが出典 URL を持ち、Wikidata 由来は revision も持つ。第三者が同じ revision を取り直して同一性を検証できる。"]
+      [:li "日本語名が無いものは英語で埋めず「日本語名なし」と表示する。"]
+      [:li "「収集範囲外」と出るリンク先は、まだ収集していないだけで存在しないわけではない。"]]))))
+
+;; ---------------------------------------------------------------------------
+
+(defn -main [& _]
+  (println (str "corpus " (count all-records) " 件 → 公開対象 " (count records) " 件"))
+  (let [counts {:character (kind-index :character "キャラクター" "収録キャラクター一覧" character-page)
+                :stage (kind-index :stage "ステージ" "収録ステージ一覧" stage-page)
+                :item (kind-index :item "アイテム" "収録アイテム一覧" item-page)}]
+    (write! "index.html" (index-page counts))
+    (println (str "→ " out-dir "/ に "
+                  (+ 4 (reduce + (vals counts))) " ページ生成"))))
+
+(apply -main *command-line-args*)

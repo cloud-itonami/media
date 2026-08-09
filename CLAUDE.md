@@ -1,3 +1,24 @@
+# cloud-itonami/media — 2 つの面を持つ repo
+
+> **2026-08-09**: オーナー指示により media 主題を cloud-itonami に集約した
+> （`media-gamers` を統合して retire、`etzhayyim/com-etzhayyim-media-gamers` stub も
+> retire、配信ゾーンを gftd.ai / etzhayyim.com から **itonami.cloud** へ）。
+> この repo は以下の **2 面**を持つ。名前(`media`)が主題を 1 つしか示さないので、
+> ここで名乗っておく（CLAUDE.md「名前が機能を示さない repo は README 冒頭で名乗る」）。
+>
+> | 面 | 中身 | 配信 |
+> |---|---|---|
+> | **A→B link medium** | 下記のとおり。news = A、media = A→B のエッジ | `media.itonami.cloud`（⚠ 現在デプロイ不可、下記） |
+> | **kouryaku 攻略データ** | ゲームのキャラクター/ステージ/アイテムと出現関係の EDN コーパス + 公開面。`kouryaku/README.md` が正本 | `kouryaku.itonami.cloud` |
+>
+> ⚠ **link medium の worker は現在デプロイできない。** `wrangler.jsonc` の
+> `main` が指す `src/app.cljc` が存在しない（実体は `src/app.ts` と
+> `clj/src/media/*.cljc`）。これが `media.gftd.ai` が 522 を返していた原因で、
+> route を itonami.cloud に付け替えても直らない —— entrypoint を決める作業が別途要る。
+> kouryaku 面はこれと独立に動く（静的 assets のみ）。
+
+---
+
 # media.gftd.ai — the A→B medium
 
 Companion to news.gftd.ai (ADR-2606161200 split). **news = A** (primary-source
