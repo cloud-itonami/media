@@ -38,3 +38,12 @@ venv/
 *.log
 coverage/
 test-results/
+
+# kouryaku 面（2026-08-09 に media-gamers から統合）
+# 生応答は cloud-itonami/media-corpus（DataLad + annex + B2）へ。
+# git に入れると収集のたびに履歴が肥大する（実測: 104 件で 16 MB）。
+.raw/
+# publish.cljs の出力。corpus から決定論的に再生成できるので追跡しない。
+kouryaku/site/
+site/
+node_modules/

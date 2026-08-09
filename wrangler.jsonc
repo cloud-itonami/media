@@ -1,14 +1,23 @@
 {
-  "name": "ai-gftd-project-media",
+  // 2026-08-09: gftd.ai → itonami.cloud へ。所有 org(cloud-itonami)と配信ゾーンが
+  // 食い違っている状態を解消する(オーナー指示)。custom_domain の形は
+  // cloud-itonami-app の hooks/mcp.itonami.cloud に揃えた。
+  "name": "itonami-media-link",
+  // ⚠ **この worker は現在デプロイできない。** `main` が指す src/app.cljc は
+  // 存在せず(実体は src/app.ts と clj/src/media/*.cljc)、そのため
+  // media.gftd.ai は 522(origin へ到達不能)を返していた —— 502 でも 404 でもなく
+  // 「Cloudflare は居るが後ろに誰も居ない」状態。route だけ itonami.cloud に
+  // 付け替えても直らないので、**entrypoint を決める作業は別途必要**。
+  // ここでは配信先の意図だけを記録し、blind deploy はしない。
   "main": "src/app.cljc",
   "compatibility_date": "2025-03-17",
   "compatibility_flags": ["nodejs_compat"],
   "routes": [
-    { "pattern": "media.gftd.ai/*", "zone_name": "gftd.ai" }
+    { "pattern": "media.itonami.cloud", "custom_domain": true }
   ],
   "vars": {
     "MEDIA_VERSION": "0.1.0-datomic-cljs",
-    "MEDIA_ACTOR_DID": "did:web:media.gftd.ai",
+    "MEDIA_ACTOR_DID": "did:web:media.itonami.cloud",
     // Canonical kotobase endpoint; tenant NSID translated to the kotoba
     // com.etzhayyim.apps.kotoba.datomic.* surface. media is a registered kotoba
     // operator (KOTOBASE_OPERATOR_DIDS) so it may datomic.transact links.

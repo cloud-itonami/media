@@ -1,0 +1,194 @@
+#!/usr/bin/env nbb
+;; query.cljs — corpus/*.edn を実 DataScript にロードして問い合わせる。
+;;
+;; corpus のシャードは 1 行 1 EDN map（superproject の canvas-ledger /
+;; design-quality-ledger と同型）。datascript.js は属性を **裸の文字列**
+;; （コロン無し、例 "kouryaku/kind"）で扱うので、生 Datalog を書くときはその形に
+;; する（manifest/edn-query.cljs の header と同じ規約）。
+;;
+;; ## 使い方
+;;   nbb --classpath . kouryaku/query.cljs stats
+;;   nbb --classpath . kouryaku/query.cljs verify
+;;   nbb --classpath . kouryaku/query.cljs where <slug>        ; そのキャラの出現ステージ
+;;   nbb --classpath . kouryaku/query.cljs stage <slug>        ; そのステージの出現キャラ
+;;   nbb --classpath . kouryaku/query.cljs search <語>
+;;   nbb --classpath . kouryaku/query.cljs q '[:find ?n :where [?e "kouryaku/kind" "item"] ...]'
+
+(ns kouryaku.query
+  (:require [kouryaku.util :as u]
+            [clojure.string :as str]
+            ["datascript" :as ds-mod]))
+
+(def ds (.-default ds-mod))
+(def corpus-dir "kouryaku/corpus")
+
+(def records (u/read-corpus corpus-dir))
+
+;; ---------------------------------------------------------------------------
+;; datascript.js 変換
+;;
+;; **リレーション（:kouryaku/rel）は別 entity に展開する。** 入れ子のまま 1 属性に
+;; 押し込むと「どのステージに何 % で出るか」を Datalog で辿れなくなり、この corpus
+;; の一番の価値が query 面から消える。
+
+(defn- kw->attr [k]
+  (if (keyword? k) (if-let [n (namespace k)] (str n "/" (name k)) (name k)) (str k)))
+
+(defn- ->scalar [v]
+  (cond (keyword? v) (name v)
+        (nil? v) ""
+        (or (map? v) (vector? v) (seq? v)) (pr-str v)
+        :else v))
+
+(defn- entity->js [id m]
+  (let [obj (js-obj)]
+    (aset obj ":db/id" id)
+    (doseq [[k v] m] (aset obj (kw->attr k) (->scalar v)))
+    obj))
+
+(defn- build-db []
+  (let [conn (.create_conn ds (js-obj))
+        base (map-indexed (fn [i m] (entity->js (- (inc i)) (dissoc m :kouryaku/rel))) records)
+        ;; rel を平坦な entity 列に展開（rel/source ← 親の :kouryaku/id）
+        rels (->> records
+                  (mapcat (fn [m] (map #(assoc % :rel/source (:kouryaku/id m)
+                                               :rel/game (:kouryaku/game m))
+                                       (:kouryaku/rel m))))
+                  (map-indexed (fn [i r]
+                                 (entity->js (- (+ 1000000 i))
+                                             (merge (dissoc r :rel/props)
+                                                    (into {} (map (fn [[k v]]
+                                                                    [(keyword "rel" (name k)) v])
+                                                                  (:rel/props r))))))))]
+    (.transact ds conn (into-array (concat base rels)))
+    (.db ds conn)))
+
+(def ^:private db (delay (build-db)))
+
+(defn- q
+  "datascript.js の `q` は **クエリを EDN 文字列で**受け取る（CLJS のデータ構造を
+  渡しても向こう側の reader に届かない）。属性は裸文字列（コロン無し）。"
+  [query-str & inputs]
+  (js->clj (.apply (.-q ds) ds (into-array (concat [query-str @db] inputs)))))
+
+;; ---------------------------------------------------------------------------
+;; 表示
+
+(defn- nm [m] (or (:ja (:kouryaku/name m)) (:en (:kouryaku/name m)) (:kouryaku/slug m) "?"))
+
+(defn- by-id [] (into {} (map (juxt :kouryaku/id identity) records)))
+
+;; ---------------------------------------------------------------------------
+;; commands
+
+(defn cmd-stats []
+  (let [by-kind (frequencies (map :kouryaku/kind records))
+        by-src (frequencies (map :src/source records))
+        by-lic (frequencies (map :src/license records))
+        rels (mapcat :kouryaku/rel records)]
+    (println (str "レコード " (count records) " 件 / リレーション " (count rels) " 件"))
+    (println "\n種別:")
+    (doseq [[k n] (sort-by (comp - val) by-kind)] (println (str "  " (name k) "\t" n)))
+    (println "\n出典:")
+    (doseq [[k n] (sort-by (comp - val) by-src)] (println (str "  " (name k) "\t" n)))
+    (println "\nライセンス:")
+    (doseq [[k n] (sort-by (comp - val) by-lic)] (println (str "  " (name k) "\t" n)))
+    (println "\n日本語名を持つ割合:")
+    (doseq [[k ms] (group-by :kouryaku/kind records)]
+      (let [ja (count (filter #(:ja (:kouryaku/name %)) ms))]
+        (println (str "  " (name k) "\t" ja "/" (count ms)))))))
+
+(defn cmd-verify
+  "**出典を持たないレコードを不良として弾く。** 数値を後から捏造・改変できない
+  構造にするための検査で、これが通らない corpus は公開面に出さない。"
+  []
+  (let [bad (remove (fn [r] (and (:src/source r) (:src/url r) (:src/license r)
+                                 (:kouryaku/id r) (:kouryaku/kind r)))
+                    records)
+        ;; wikidata 由来は revision が無いと第三者が同一バイトを再取得できない
+        no-rev (filter #(and (= :wikidata (:src/source %)) (nil? (:src/revision %))) records)
+        ids (map :kouryaku/id records)
+        dup (->> (frequencies ids) (filter #(> (val %) 1)) (map key))
+        ;; rel の指す先が corpus に居るか（居なくても不正ではない — 収集範囲外の
+        ;; ものは普通にある。何件が範囲外かを**申告する**のが目的）
+        known (set ids)
+        dangling (->> records (mapcat :kouryaku/rel) (map :rel/target) (remove known) distinct)]
+    (println (str "レコード " (count records)))
+    (println (str "  出典欠落      " (count bad)))
+    (println (str "  revision 欠落 " (count no-rev) " (wikidata のみ対象)"))
+    (println (str "  id 重複       " (count dup)))
+    (println (str "  範囲外 rel    " (count dangling) " 種 (収集 limit の外側。不正ではない)"))
+    (doseq [r (take 5 bad)] (println (str "    [bad] " (pr-str (select-keys r [:kouryaku/id :src/source])))))
+    (when (or (seq bad) (seq dup))
+      (println "\nNG: 出典欠落または id 重複があります")
+      (js/process.exit 1))
+    (println "\nOK")))
+
+(defn cmd-where
+  "そのキャラクターがどのステージに、どのバージョンで、どれくらい出るか。
+  encounter-score は PokéAPI の max_chance（方式ごとの確率の合計。100 超あり）。"
+  [slug]
+  (let [target (str "pokeapi:pokemon/" slug)
+        rows (q "[:find ?src ?ver ?chance ?minl ?maxl ?methods
+                  :in $ ?t
+                  :where [?e \"rel/target\" ?t]
+                         [?e \"rel/source\" ?src]
+                         [?e \"rel/version\" ?ver]
+                         [?e \"rel/encounter-score\" ?chance]
+                         [?e \"rel/min-level\" ?minl]
+                         [?e \"rel/max-level\" ?maxl]
+                         [?e \"rel/methods\" ?methods]]"
+                target)
+        idx (by-id)]
+    (if (empty? rows)
+      (println (str "「" slug "」の出現データは corpus にありません（収集範囲外か、その名前が無い）"))
+      (do
+        (println (str "▸ " slug " の出現ステージ（" (count rows) " 件）"))
+        (doseq [[src ver chance minl maxl methods] (sort-by (comp - #(nth % 2)) rows)]
+          (println (str "  " (nm (get idx src)) "\t" ver "\t" chance "\tLv" minl "-" maxl
+                        "\t" (str/join "," (u/read-edn-str methods)))))))))
+
+(defn cmd-stage
+  "そのステージに何が出るか。"
+  [slug]
+  (let [src (str "pokeapi:location-area/" slug)
+        rows (q "[:find ?t ?ver ?chance ?minl ?maxl
+                  :in $ ?s
+                  :where [?e \"rel/source\" ?s]
+                         [?e \"rel/target\" ?t]
+                         [?e \"rel/version\" ?ver]
+                         [?e \"rel/encounter-score\" ?chance]
+                         [?e \"rel/min-level\" ?minl]
+                         [?e \"rel/max-level\" ?maxl]]"
+                src)
+        idx (by-id)]
+    (if (empty? rows)
+      (println (str "「" slug "」のステージデータは corpus にありません"))
+      (do
+        (println (str "▸ " (nm (get idx src)) " の出現キャラクター（" (count rows) " 件）"))
+        (doseq [[t ver chance minl maxl] (sort-by (comp - #(nth % 2)) rows)]
+          (println (str "  " (or (some-> (get idx t) nm) (last (str/split t #"/")))
+                        "\t" ver "\t" chance "\tLv" minl "-" maxl)))))))
+
+(defn cmd-search [term]
+  (let [t (str/lower-case term)
+        hit (filter (fn [r]
+                      (some #(and % (str/includes? (str/lower-case (str %)) t))
+                            [(:kouryaku/slug r) (:ja (:kouryaku/name r)) (:en (:kouryaku/name r))]))
+                    records)]
+    (println (str (count hit) " 件"))
+    (doseq [r (take 40 hit)]
+      (println (str "  [" (name (:kouryaku/kind r)) "] " (nm r) "\t" (:kouryaku/id r))))))
+
+(defn -main [& args]
+  (let [[cmd a] args]
+    (case cmd
+      "stats" (cmd-stats)
+      "verify" (cmd-verify)
+      "where" (cmd-where a)
+      "stage" (cmd-stage a)
+      "search" (cmd-search a)
+      "q" (doseq [row (q a)] (println (pr-str row)))
+      (println "usage: query.cljs [stats|verify|where <slug>|stage <slug>|search <語>|q <datalog>]"))))
+
+(apply -main *command-line-args*)
