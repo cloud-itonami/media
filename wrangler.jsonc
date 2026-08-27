@@ -32,10 +32,10 @@
     "NEWS_GRAPH": "news-intel-v1",
     // LITELLM_URL (gemma.gftd.ai) + MURAKUMO_DEFAULT_MODEL removed 2026-07 —
     // that host is dead (k8s pod gone) and unconsumed anywhere in this app's
-    // own code. murakumo.cloud is the intended successor but isn't ready yet
-    // (no upstream LLM wired, no matching model) — not wired here until it is.
+    // own code. Text generation now uses api.murakumo.cloud directly.
+    // MURAKUMO_API_KEY is a Wrangler secret; never commit its value.
     // pod dispatcher for heavy entity-resolution / multi-step linking.
-    "MEDIA_POD_URL": "https://media-actor.gftd.ai"
+    // MEDIA_POD_URL has no default: retired gftd.ai pod routes must be supplied explicitly.
   },
   "build": {
     "command": "cd clj && clojure -M:cljs -m shadow.cljs.devtools.cli release worker"

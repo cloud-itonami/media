@@ -31,6 +31,7 @@ type Env = {
   KOTOBA_BEARER?: string;
   LITELLM_URL?: string;
   MURAKUMO_DEFAULT_MODEL?: string;
+  MURAKUMO_API_KEY?: string;
   MEDIA_POD_URL?: string;
   // Cloudflare Queue producer binding (hourly analysis fan-out).
   ANALYSIS_QUEUE?: { send(msg: unknown): Promise<void>; sendBatch(msgs: { body: unknown }[]): Promise<void> };
@@ -101,10 +102,12 @@ async function dmQuery(env: Env, graphLabel: string, queryEdn: string): Promise<
 // ── litellm (B-framed generation; model id from env SSoT) ────────────────────
 
 async function llmComplete(env: Env, system: string, user: string, maxTokens = 320): Promise<string> {
-  const url = (env.LITELLM_URL ?? "https://gemma.gftd.ai/v1").replace(/\/+$/, "");
-  const model = env.MURAKUMO_DEFAULT_MODEL ?? "gemma-4-e4b-it";
+  const url = (env.LITELLM_URL ?? "https://api.murakumo.cloud/v1").replace(/\/+$/, "");
+  const model = env.MURAKUMO_DEFAULT_MODEL ?? "murakumo-main";
+  const headers: Record<string, string> = { "content-type": "application/json" };
+  if (env.MURAKUMO_API_KEY) headers.authorization = `Bearer ${env.MURAKUMO_API_KEY}`;
   const r = await fetch(`${url}/chat/completions`, {
-    method: "POST", headers: { "content-type": "application/json" },
+    method: "POST", headers,
     body: JSON.stringify({ model, messages: [{ role: "system", content: system }, { role: "user", content: user }], max_tokens: maxTokens, temperature: 0.4 }),
   });
   if (!r.ok) throw new Error(`litellm: ${r.status}`);
