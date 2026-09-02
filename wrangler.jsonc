@@ -64,6 +64,10 @@
   //                   wrangler queues create media-analysis-dlq
   "observability": { "enabled": true }
   // secrets (wrangler secret put):
-  //   KOTOBA_BEARER — media's authn.gftd.ai session JWT (sub=did:web:media.gftd.ai);
+  //   KOTOBA_BEARER — media's own session JWT (sub=did:web:media.itonami.cloud);
   //                   kotobase.net elevates it to operator for datomic.transact.
+  //                   ⚠ 2026-09-02: 発行元だった authn.gftd.ai / auth.gftd.ai は
+  //                   prune 対象（オーナー指示。gftd.ai は deprecated）。再発行時の
+  //                   issuer は itonami 側のものを使うこと —— ここに死んだ issuer の
+  //                   名前を残すと、次に鍵を回す人がそこへ取りに行く。
 }
