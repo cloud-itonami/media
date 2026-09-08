@@ -4,7 +4,7 @@
   Registry = ISO 639-1 (180+ codes, well over the 100-language target). Pure: the
   TS shell uses lang-directive to steer the litellm generation and stores the
   resolved code on the link."
-  (:require [clojure.string :as str]))
+  (:require [kotoba.lang.text :as str]))
 
 (defn- ->js [x] #?(:cljs (clj->js x) :clj x))
 
@@ -50,7 +50,7 @@
    "za" "Zhuang" "zu" "Zulu"})
 
 (def ^:private name->code
-  (into {} (map (fn [[c n]] [(str/lower-case n) c])) languages))
+  (into {} (map (fn [[c n]] [(str/lower n) c])) languages))
 
 (defn supported-lang-count [] (count languages))
 
@@ -61,7 +61,7 @@
   [input]
   (if (or (nil? input) (and (string? input) (str/blank? input)))
     "en"
-    (let [s (str/lower-case (str/trim (str input)))
+    (let [s (str/lower (str/trim (str input)))
           base (first (str/split s #"[-_]"))]   ; pt-BR → pt
       (cond
         (contains? languages base) base

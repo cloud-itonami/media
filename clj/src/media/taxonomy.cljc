@@ -2,7 +2,7 @@
   "The medium's controlled vocabularies: genre desks, A→B relation types, and
   subject kinds. Pure — used for validation and genre inference. Keeping these
   in one place lets coverage grow by editing a set, not the pipeline."
-  (:require [clojure.string :as str]))
+  (:require [kotoba.lang.text :as str]))
 
 (defn- ->js [x] #?(:cljs (clj->js x) :clj x))
 
@@ -19,20 +19,20 @@
 (def subject-kinds
   #{"cohort" "org" "place" "market" "discipline" "did"})
 
-(defn genre?    [g] (contains? genres (some-> g str str/lower-case str/trim)))
-(defn relation? [r] (contains? relations (some-> r str str/lower-case str/trim)))
-(defn kind?     [k] (contains? subject-kinds (some-> k str str/lower-case str/trim)))
+(defn genre?    [g] (contains? genres (some-> g str str/lower str/trim)))
+(defn relation? [r] (contains? relations (some-> r str str/lower str/trim)))
+(defn kind?     [k] (contains? subject-kinds (some-> k str str/lower str/trim)))
 
 (defn normalize-genre
   "Known genre (lowercased) or \"tech\" as the safe default."
   [g]
-  (let [c (some-> g str str/lower-case str/trim)]
+  (let [c (some-> g str str/lower str/trim)]
     (if (contains? genres c) c "tech")))
 
 (defn normalize-relation
   "Known relation or \"explains\" default."
   [r]
-  (let [c (some-> r str str/lower-case str/trim)]
+  (let [c (some-> r str str/lower str/trim)]
     (if (contains? relations c) c "explains")))
 
 ;; ── JS exports ───────────────────────────────────────────────────────────────

@@ -3,7 +3,7 @@
   seeds. Pure. Profiles steer generation (audience + tone); relation inference
   picks the edge type from the source instead of always defaulting to
   \"explains\"; seeds give autopilot real targets per genre."
-  (:require [clojure.string :as str]
+  (:require [kotoba.lang.text :as str]
             [media.taxonomy :as tax]))
 
 (defn- ->js [x] #?(:cljs (clj->js x) :clj x))

@@ -3,7 +3,7 @@
   between a primary source (A) and a subject (B). Generalizes the news bridge
   metric (inequality/loneliness/separation) plus an A↔B topical-overlap term:
   a strong link is one where A is highly relevant to B AND closes a real gap."
-  (:require [clojure.string :as str]
+  (:require [kotoba.lang.text :as str]
             [clojure.set :as set]))
 
 (defn- ->clj [x] #?(:cljs (js->clj x :keywordize-keys true) :clj x))
@@ -15,11 +15,11 @@
 (def ^:private action-terms     ["how to" "guide" "apply" "deadline" "free" "support" "hotline" "申請" "支援" "無料"])
 
 (defn- hits [text terms]
-  (let [t (str/lower-case (or text ""))]
+  (let [t (str/lower (or text ""))]
     (reduce (fn [n term] (if (str/includes? t term) (inc n) n)) 0 terms)))
 
 (defn- clamp [x lo hi] (max lo (min hi x)))
-(defn- tokens [s] (set (re-seq #"[a-z0-9]+" (str/lower-case (or s "")))))
+(defn- tokens [s] (set (re-seq #"[a-z0-9]+" (str/lower (or s "")))))
 
 (defn- overlap
   "A↔B topical overlap (0-100): Jaccard of source text tokens vs subject label/
