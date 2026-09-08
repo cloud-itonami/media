@@ -7,7 +7,7 @@
 
   Wire format mirrors the news core / yatabase client: a transaction is an EDN
   vector of [:db/add E A V] ops; pr-str reproduces the grammar exactly."
-  (:require [clojure.string :as str]
+  (:require [kotoba.lang.text :as str]
             [clojure.edn :as edn]
             [media.taxonomy :as tax]
             #?(:cljs [cljs.reader])))
@@ -20,7 +20,7 @@
 ;; ── slug / genre desk DID ───────────────────────────────────────────────────
 
 (defn slugify [s]
-  (-> (or s "") str/lower-case
+  (-> (or s "") str/lower
       (str/replace #"[^a-z0-9]+" "-")
       (str/replace #"^-+|-+$" "")))
 

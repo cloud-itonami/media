@@ -4,7 +4,7 @@
   to, with a bridge score per candidate. Deterministic baseline — app.cljc may
   escalate ambiguous cases to the pod / LLM for richer entity resolution."
   (:require [media.score :as score]
-            [clojure.string :as str]))
+            [kotoba.lang.text :as str]))
 
 (defn- ->clj [x] #?(:cljs (js->clj x :keywordize-keys true) :clj x))
 (defn- ->js  [x] #?(:cljs (clj->js x) :clj x))
