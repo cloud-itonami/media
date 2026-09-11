@@ -1,4 +1,4 @@
-#!/usr/bin/env nbb
+#!/usr/bin/env kbb
 ;; collect.cljs — ゲーム攻略情報の収集器。
 ;;
 ;; ## 何を集めるか
@@ -20,9 +20,9 @@
 ;; `:src/warc-offset` と同じ役割で、削らない。
 ;;
 ;; ## 使い方
-;;   nbb --classpath . kouryaku/collect.cljk --target pokeapi-character --limit 60
-;;   nbb --classpath . kouryaku/collect.cljk --all --limit 40
-;;   nbb --classpath . kouryaku/collect.cljk --list
+;;   kbb --backend sci --classpath . kouryaku/collect.cljk --target pokeapi-character --limit 60
+;;   kbb --backend sci --classpath . kouryaku/collect.cljk --all --limit 40
+;;   kbb --backend sci --classpath . kouryaku/collect.cljk --list
 
 (ns kouryaku.collect
   (:require [kouryaku.util :as u]

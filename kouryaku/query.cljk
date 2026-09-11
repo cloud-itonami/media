@@ -1,4 +1,4 @@
-#!/usr/bin/env nbb
+#!/usr/bin/env kbb
 ;; query.cljs — corpus/*.edn を実 DataScript にロードして問い合わせる。
 ;;
 ;; corpus のシャードは 1 行 1 EDN map（superproject の canvas-ledger /
@@ -7,12 +7,12 @@
 ;; する（manifest/edn-query.cljs の header と同じ規約）。
 ;;
 ;; ## 使い方
-;;   nbb --classpath . kouryaku/query.cljk stats
-;;   nbb --classpath . kouryaku/query.cljk verify
-;;   nbb --classpath . kouryaku/query.cljk where <slug>        ; そのキャラの出現ステージ
-;;   nbb --classpath . kouryaku/query.cljk stage <slug>        ; そのステージの出現キャラ
-;;   nbb --classpath . kouryaku/query.cljk search <語>
-;;   nbb --classpath . kouryaku/query.cljk q '[:find ?n :where [?e "kouryaku/kind" "item"] ...]'
+;;   kbb --backend sci --classpath . kouryaku/query.cljk stats
+;;   kbb --backend sci --classpath . kouryaku/query.cljk verify
+;;   kbb --backend sci --classpath . kouryaku/query.cljk where <slug>        ; そのキャラの出現ステージ
+;;   kbb --backend sci --classpath . kouryaku/query.cljk stage <slug>        ; そのステージの出現キャラ
+;;   kbb --backend sci --classpath . kouryaku/query.cljk search <語>
+;;   kbb --backend sci --classpath . kouryaku/query.cljk q '[:find ?n :where [?e "kouryaku/kind" "item"] ...]'
 
 (ns kouryaku.query
   (:require [kouryaku.util :as u]

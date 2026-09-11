@@ -1,6 +1,6 @@
 (ns media.core-test
   "JVM unit tests for the pure media cores (.cljc runs on the JVM; ->clj/->js are
-  identity there, so we pass plain Clojure maps). Run: clojure -M:test"
+  identity there, so we pass plain Clojure maps). Run: kbb -M:test"
   (:require [clojure.test :refer [deftest is testing]]
             [media.core :as core]
             [media.taxonomy :as tax]

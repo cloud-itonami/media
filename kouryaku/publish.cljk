@@ -1,4 +1,4 @@
-#!/usr/bin/env nbb
+#!/usr/bin/env kbb
 ;; publish.cljs — corpus/*.edn → 静的 HTML（デジタル庁デザインシステム）。
 ;;
 ;; ## 公開の出口ゲート
@@ -17,7 +17,7 @@
 ;; - CSS は EDN で書く（`css.core`）。ベクタ列にするのは順序＝カスケードのため
 ;;
 ;; ## 実行
-;;   nbb --classpath ".:<html>/src:<css>/src:<jp-go-dds>/src" kouryaku/publish.cljk
+;;   kbb --backend sci --classpath ".:<html>/src:<css>/src:<jp-go-dds>/src" kouryaku/publish.cljk
 ;; パスは KOURYAKU_CLASSPATH_ROOT / JP_GO_DDS_CSS で上書きできる。
 
 (ns kouryaku.publish

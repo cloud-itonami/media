@@ -16,7 +16,7 @@
     "typescript": "^6.0.2"
   },
   "scripts": {
-    "cljs:release": "cd clj && clojure -M:cljs -m shadow.cljs.devtools.cli release worker",
+    "cljs:release": "cd clj && kbb -M:cljs -m shadow.cljs.devtools.cli release worker",
     "typecheck": "tsc --noEmit",
     "install:deps": "npm install --install-links"
   }
