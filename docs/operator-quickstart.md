@@ -22,7 +22,7 @@ Four commands. The only network access is `npm install` for a single dependency.
 cd kouryaku && npm install --no-audit --no-fund   # datascript, 1 package
 cd ..
 
-nbb --classpath . kouryaku/query.cljs verify
+nbb --classpath . kouryaku/query.cljk verify
 #   レコード 177
 #     出典欠落      0
 #     revision 欠落 0 (wikidata のみ対象)
@@ -33,7 +33,7 @@ nbb --classpath . kouryaku/query.cljs verify
 K=<root>/orgs/kotoba-lang            # absolute — see the note below
 JP_GO_DDS_CSS=$K/jp-go-digital-design-system/resources/jp_go_dds/dds.css \
 nbb --classpath ".:$K/html/src:$K/css/src:$K/jp-go-digital-design-system/src" \
-    kouryaku/publish.cljs
+    kouryaku/publish.cljk
 #   corpus 177 件 → 公開対象 177 件
 #   → site/ に 169 ページ生成
 ```

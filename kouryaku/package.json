@@ -3,9 +3,9 @@
   "private": true,
   "description": "攻略面の Node 依存だけを宣言する。ルートの package.json には足さない —— あちらは @gftd/magatama-host-sdk が `workspace:*` のまま残っており(gftdcojp モノレポから切り出した際の残骸)、npm install が EUNSUPPORTEDPROTOCOL で通らない。他人の依存を消さずに済むよう、この面は自分の node_modules を持つ(node は require 元から上方向に探すので kouryaku/node_modules が先に当たる)。",
   "scripts": {
-    "collect": "nbb --classpath .. kouryaku/collect.cljs",
-    "query": "nbb --classpath .. kouryaku/query.cljs",
-    "publish": "nbb --classpath .. kouryaku/publish.cljs"
+    "collect": "nbb --classpath .. kouryaku/collect.cljk",
+    "query": "nbb --classpath .. kouryaku/query.cljk",
+    "publish": "nbb --classpath .. kouryaku/publish.cljk"
   },
   "dependencies": {
     "datascript": "^1.7.4"

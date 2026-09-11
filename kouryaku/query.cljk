@@ -7,12 +7,12 @@
 ;; する（manifest/edn-query.cljs の header と同じ規約）。
 ;;
 ;; ## 使い方
-;;   nbb --classpath . kouryaku/query.cljs stats
-;;   nbb --classpath . kouryaku/query.cljs verify
-;;   nbb --classpath . kouryaku/query.cljs where <slug>        ; そのキャラの出現ステージ
-;;   nbb --classpath . kouryaku/query.cljs stage <slug>        ; そのステージの出現キャラ
-;;   nbb --classpath . kouryaku/query.cljs search <語>
-;;   nbb --classpath . kouryaku/query.cljs q '[:find ?n :where [?e "kouryaku/kind" "item"] ...]'
+;;   nbb --classpath . kouryaku/query.cljk stats
+;;   nbb --classpath . kouryaku/query.cljk verify
+;;   nbb --classpath . kouryaku/query.cljk where <slug>        ; そのキャラの出現ステージ
+;;   nbb --classpath . kouryaku/query.cljk stage <slug>        ; そのステージの出現キャラ
+;;   nbb --classpath . kouryaku/query.cljk search <語>
+;;   nbb --classpath . kouryaku/query.cljk q '[:find ?n :where [?e "kouryaku/kind" "item"] ...]'
 
 (ns kouryaku.query
   (:require [kouryaku.util :as u]
