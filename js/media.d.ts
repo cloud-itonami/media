@@ -1,5 +1,5 @@
 // Type surface for the shadow-cljs :esm output (media.core / media.score /
-// media.link). Generated bundle (media.js) by `shadow-cljs release worker`.
+// media.link). Generated bundle (media.js) by `amu compile --target wasm32-browser worker`.
 
 declare module "../js/media.js" {
   export function validateLink(obj: unknown): { valid: boolean; error?: string };

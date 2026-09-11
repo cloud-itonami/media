@@ -38,7 +38,7 @@
     // MEDIA_POD_URL has no default: retired gftd.ai pod routes must be supplied explicitly.
   },
   "build": {
-    "command": "cd clj && clojure -M:cljs -m shadow.cljs.devtools.cli release worker"
+    "command": "cd clj && kbb -M:cljs -m shadow.cljs.devtools.cli release worker"
   },
   // Hourly automatic analysis of primary sources (A) — the scheduled() handler
   // scans recent news sources and enqueues one job per source; the queue

@@ -16,6 +16,6 @@
   :migration/build-note
   "The TypeScript shell resolves @gftd/magatama-host-sdk through the west/superproject workspace. The generated js/media.js is produced by the guarded ClojureScript release and is not committed as a second source of truth."
   :migration/verification
-  ["clojure -M:test in clj"
+  ["kbb -M:test in clj"
    "EDN parse"
    "source parity for migrated runtime files"]}]
