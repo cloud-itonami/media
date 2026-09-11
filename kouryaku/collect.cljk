@@ -20,9 +20,9 @@
 ;; `:src/warc-offset` と同じ役割で、削らない。
 ;;
 ;; ## 使い方
-;;   nbb --classpath . kouryaku/collect.cljs --target pokeapi-character --limit 60
-;;   nbb --classpath . kouryaku/collect.cljs --all --limit 40
-;;   nbb --classpath . kouryaku/collect.cljs --list
+;;   nbb --classpath . kouryaku/collect.cljk --target pokeapi-character --limit 60
+;;   nbb --classpath . kouryaku/collect.cljk --all --limit 40
+;;   nbb --classpath . kouryaku/collect.cljk --list
 
 (ns kouryaku.collect
   (:require [kouryaku.util :as u]

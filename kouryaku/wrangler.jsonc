@@ -1,5 +1,5 @@
 {
-  // 攻略データの公開面。`kouryaku/publish.cljs` が生成した `site/` を
+  // 攻略データの公開面。`kouryaku/publish.cljk` が生成した `site/` を
   // Workers static assets でそのまま配る（動的な処理は無いので worker script も
   // 持たない ―― assets だけの deploy）。
   //

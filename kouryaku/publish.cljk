@@ -17,7 +17,7 @@
 ;; - CSS は EDN で書く（`css.core`）。ベクタ列にするのは順序＝カスケードのため
 ;;
 ;; ## 実行
-;;   nbb --classpath ".:<html>/src:<css>/src:<jp-go-dds>/src" kouryaku/publish.cljs
+;;   nbb --classpath ".:<html>/src:<css>/src:<jp-go-dds>/src" kouryaku/publish.cljk
 ;; パスは KOURYAKU_CLASSPATH_ROOT / JP_GO_DDS_CSS で上書きできる。
 
 (ns kouryaku.publish
@@ -119,7 +119,7 @@
       [:li [:strong (:source/name s)] " — " (:source/attribution s)
        " (" [:a {:href (:source/license-url s)} (name (:source/license s))] ")"])]
    [:p {:class "k-sub"}
-    "生成: kouryaku/publish.cljs · 収集: kouryaku/collect.cljs · 問い合わせ: kouryaku/query.cljs"]])
+    "生成: kouryaku/publish.cljk · 収集: kouryaku/collect.cljk · 問い合わせ: kouryaku/query.cljk"]])
 
 (defn- render [{:keys [title description depth]} & body]
   (apply page/->page

@@ -14,13 +14,13 @@ corpus/*.edn    正規化済みレコード（1 行 1 EDN map、git 管理）
 
 ```bash
 npm install                                    # datascript のみ
-nbb --classpath . kouryaku/collect.cljs --all --limit 40
-nbb --classpath . kouryaku/query.cljs verify
-nbb --classpath . kouryaku/query.cljs stage valley-windworks-area
+nbb --classpath . kouryaku/collect.cljk --all --limit 40
+nbb --classpath . kouryaku/query.cljk verify
+nbb --classpath . kouryaku/query.cljk stage valley-windworks-area
 K=../../kotoba-lang
 JP_GO_DDS_CSS=$K/jp-go-digital-design-system/resources/jp_go_dds/dds.css \
 nbb --classpath ".:$K/html/src:$K/css/src:$K/jp-go-digital-design-system/src" \
-    kouryaku/publish.cljs
+    kouryaku/publish.cljk
 ```
 
 ## データモデル
@@ -46,7 +46,7 @@ nbb --classpath ".:$K/html/src:$K/css/src:$K/jp-go-digital-design-system/src" \
 まま 1 属性に押し込むと、この corpus の一番の価値が Datalog から辿れなくなる。
 
 ```bash
-$ nbb --classpath . kouryaku/query.cljs where bidoof
+$ nbb --classpath . kouryaku/query.cljk where bidoof
 ▸ bidoof の出現ステージ（3 件）
   Valley Windworks   diamond   10  Lv8-8    walk
   Valley Windworks   pearl     10  Lv8-8    walk
