@@ -4,7 +4,7 @@
   metric (inequality/loneliness/separation) plus an A↔B topical-overlap term:
   a strong link is one where A is highly relevant to B AND closes a real gap."
   (:require [kotoba.lang.text :as str]
-            [clojure.set :as set]))
+            [kotoba.lang.coll :as set]))
 
 (defn- ->clj [x] #?(:cljs (js->clj x :keywordize-keys true) :clj x))
 (defn- ->js  [x] #?(:cljs (clj->js x) :clj x))
