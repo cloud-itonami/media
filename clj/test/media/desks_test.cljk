@@ -1,6 +1,6 @@
 (ns media.desks-test
   "JVM unit tests for desk profiles, relation inference, and subject seeds."
-  (:require [clojure.test :refer [deftest is testing]]
+  (:require [kotoba.test :refer [deftest is testing]]
             [media.desks :as desks]
             [media.taxonomy :as tax]))
 
