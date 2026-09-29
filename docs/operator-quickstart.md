@@ -1,9 +1,9 @@
 # Operator quickstart
 
-This repository has **two faces** (`CLAUDE.md` names them): an A→B link medium
+This repository has **two faces** (`AGENTS.md` names them): an A→B link medium
 Worker, and `kouryaku` — a game-strategy EDN corpus with a public static site. Only
 the second one runs today. The link medium builds but has never been deployed,
-because `CLAUDE.md` records three unmet runtime preconditions.
+because `AGENTS.md` records three unmet runtime preconditions.
 
 This document walks the `kouryaku` pipeline end to end, because it works, and reports
 what the walk found — including the first time one of its gates was made to refuse
@@ -129,7 +129,7 @@ before relying on it:
 
 ## 4. The link-medium face is not deployable today
 
-`CLAUDE.md` records that `wrangler deploy --dry-run` passes (3519 KiB, 507 KiB
+`AGENTS.md` records that `wrangler deploy --dry-run` passes (3519 KiB, 507 KiB
 gzipped, all bindings resolving) and that deployment has deliberately not happened,
 because three runtime preconditions are unmet — the first being that the
 `media-analysis` Queue does not exist on the account. Treat the build passing as

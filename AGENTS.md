@@ -4,7 +4,7 @@
 > （`media-gamers` を統合して retire、`etzhayyim/com-etzhayyim-media-gamers` stub も
 > retire、配信ゾーンを gftd.ai / etzhayyim.com から **itonami.cloud** へ）。
 > この repo は以下の **2 面**を持つ。名前(`media`)が主題を 1 つしか示さないので、
-> ここで名乗っておく（CLAUDE.md「名前が機能を示さない repo は README 冒頭で名乗る」）。
+> ここで名乗っておく（AGENTS.md「名前が機能を示さない repo は README 冒頭で名乗る」）。
 >
 > | 面 | 中身 | 配信 |
 > |---|---|---|
